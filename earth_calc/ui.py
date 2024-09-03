@@ -13,6 +13,7 @@ from qgis.PyQt.QtWidgets import (
 	QRadioButton,
 	QLabel,
 	QSpinBox,
+	QDoubleSpinBox,
 	QComboBox,
 	QDialogButtonBox,
 	QDialog
@@ -24,21 +25,24 @@ class TestDialog(QDialog):
 
 		## Create all Widgets first
 		# Combo boxes 
-		self.pointsComboBox = QComboBox()
+		#self.pointsComboBox = QComboBox()
 		self.terrainComboBox = QComboBox()
 		self.trackersComboBox = QComboBox()
 
 		# Spin boxes
-		self.minSpinBox = QSpinBox()
-		self.maxSpinBox = QSpinBox()		
-		self.pilesSpinBox = QSpinBox()		
+		self.minSpinBox = QDoubleSpinBox()
+		self.minSpinBox.setDecimals(1)
+		self.maxSpinBox = QDoubleSpinBox()		
+		self.maxSpinBox.setDecimals(1)
+		self.pilesSpinBox = QSpinBox()
+		self.pilesSpinBox.setValue(1)
 
-		# Radio buttons [ created last bc radio.click() calls upon the above widgets ]
-		self.createPointsButton = QRadioButton('Create Points')
-		self.createPointsButton.toggled.connect(self.createPointsAction)
-		self.createPointsButton.click()
-		self.pointsFromLayerButton = QRadioButton('Points from Layer')
-		self.pointsFromLayerButton.toggled.connect(self.pointsFromLayerAction)
+		## Radio buttons [ created last bc radio.click() calls upon the above widgets ]
+		#self.createPointsButton = QRadioButton('Create Points')
+		#self.createPointsButton.toggled.connect(self.createPointsAction)
+		#self.createPointsButton.click()
+		#self.pointsFromLayerButton = QRadioButton('Points from Layer')
+		#self.pointsFromLayerButton.toggled.connect(self.pointsFromLayerAction)
 
 		# Standard buttons and button box
 		self.buttonBox = QDialogButtonBox()
@@ -47,11 +51,11 @@ class TestDialog(QDialog):
 		self.buttonBox.accepted.connect(self.okAction)
 		self.buttonBox.rejected.connect(self.cancelAction)
 
-		## Create and organize panels (layouts)
-		# radio button panel
-		radioPanel = QVBoxLayout()
-		radioPanel.addWidget(self.createPointsButton)
-		radioPanel.addWidget(self.pointsFromLayerButton)
+		### Create and organize panels (layouts)
+		## radio button panel
+		#radioPanel = QVBoxLayout()
+		#radioPanel.addWidget(self.createPointsButton)
+		#radioPanel.addWidget(self.pointsFromLayerButton)
 
 		# spin box panels
 		numPanel = QFormLayout()
@@ -61,7 +65,7 @@ class TestDialog(QDialog):
 		
 		# combo box panel
 		layerPanel = QFormLayout()
-		layerPanel.addRow('Points',self.pointsComboBox)
+		#layerPanel.addRow('Points',self.pointsComboBox)
 		layerPanel.addRow('Terrain',self.terrainComboBox)
 		layerPanel.addRow('Trackers',self.trackersComboBox)
 
@@ -72,7 +76,7 @@ class TestDialog(QDialog):
 		## put panels into layouts
 		# left
 		leftPanel = QVBoxLayout()
-		leftPanel.addLayout(radioPanel)
+		#leftPanel.addLayout(radioPanel)
 		leftPanel.addLayout(numPanel)
 		
 		# right
@@ -88,17 +92,17 @@ class TestDialog(QDialog):
 		# set
 		self.setLayout(layout)
 
-	# radio create Points toggle
-	def createPointsAction(self):
-		self.pointsComboBox.setDisabled(True)
-		self.pointsComboBox.setCurrentText('')
-		self.pilesSpinBox.setDisabled(False)
+	## radio create Points toggle
+	#def createPointsAction(self):
+	#	self.pointsComboBox.setDisabled(True)
+	#	self.pointsComboBox.setCurrentText('')
+	#	self.pilesSpinBox.setDisabled(False)
 
-	# radio select Points layer toggle
-	def pointsFromLayerAction(self):
-		self.pointsComboBox.setDisabled(False)
-		self.pilesSpinBox.setDisabled(True)
-		self.pilesSpinBox.setValue(0)
+	## radio select Points layer toggle
+	#def pointsFromLayerAction(self):
+	#	self.pointsComboBox.setDisabled(False)
+	#	self.pilesSpinBox.setDisabled(True)
+	#	self.pilesSpinBox.setValue(0)
 
 	# called after Dialog creation in test.py (main).
 	# qgis instance must exist
@@ -106,7 +110,7 @@ class TestDialog(QDialog):
 		layer_names = ['']
 		for L in layers:
 			layer_names.append(L)
-		self.pointsComboBox.addItems(layer_names)
+		#self.pointsComboBox.addItems(layer_names)
 		self.terrainComboBox.addItems(layer_names)
 		self.trackersComboBox.addItems(layer_names)
 
@@ -115,7 +119,7 @@ class TestDialog(QDialog):
 		self.inputs = {
 			'terrain_layer': self.terrainComboBox.currentText(),
 			'trackers_layer': self.trackersComboBox.currentText(),
-			'points_layer': self.pointsComboBox.currentText(),
+			#'points_layer': self.pointsComboBox.currentText(),
 			'num_piles': self.pilesSpinBox.value(),
 			'max_reveal': self.maxSpinBox.value(),
 			'min_reveal': self.minSpinBox.value(),
@@ -124,7 +128,8 @@ class TestDialog(QDialog):
 
 	# Ensures all options are valid before moving along
 	def validate(self):
-		cond1 = ( self.inputs['num_piles'] > 0 ) | ( len(self.inputs['points_layer']) > 0 )
+		#cond1 = ( self.inputs['num_piles'] > 0 ) | ( len(self.inputs['points_layer']) > 0 )
+		cond1 = self.inputs['num_piles'] > 0
 		cond2 = self.inputs['max_reveal'] > self.inputs['min_reveal']
 		cond3 = len(self.inputs['terrain_layer']) > 0
 		cond4 = len(self.inputs['trackers_layer']) > 0
