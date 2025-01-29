@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/earth_calc" >
+    <qresource prefix="/" >
         <file>icon.png</file>
     </qresource>
 </RCC>
