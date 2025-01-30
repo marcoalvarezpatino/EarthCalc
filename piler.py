@@ -9,15 +9,15 @@ import numpy as np
 class Piler:
     def __init__(self, inputs):
         self.inputs = inputs
-        self.terrain = self.loadTerrain(inputs['terrain_layer'])
+        # self.terrain = self.loadTerrain(inputs['terrain_layer'])
 
     def loadTrackers(self):
         # creating a polygon from a QGIS layer input called Tracker_Polylines
         input_polylines = QgsProject.instance().mapLayersByName(self.inputs['trackers_layer'])[0]
 
         # create a polygon / polyline check here / error message
-        # get crs for vector layer
-        crs = input_polylines.crs().authid()
+        # # get crs for vector layer
+        # source_crs = input_polylines.crs().authid()
 
         # creating polygons from input polylines
         polygons = processing.run(
@@ -64,8 +64,10 @@ class Piler:
         v1 = v1['OUTPUT']
         return v1
 
-    def loadTerrain(self, layer_name):
-        return
+    # def loadTerrain(self, layer_name):
+    #     # creating an variable for an input raster using a layer called EG_input, bring in you EG DTM as a tiff ard rename it as topo_input_raster in qgis
+    #     input_raster = QgsProject.instance().mapLayersByName(self.inputs['terrain_layer'])[0]
+    #     return input_raster
 
     def makeDF(self, vertices):
             # listing all the columns to include inside the data frame
@@ -124,7 +126,15 @@ class Piler:
 
     def initPiles(self, df):
         # Define the layer type (in this case, a Point layer)
-        layer = QgsVectorLayer('Point?crs= + crs + ', 'MyLayer', 'memory')
+
+        #setting a variable from gui inputs to pull crs from
+        input_polylines = QgsProject.instance().mapLayersByName(self.inputs['trackers_layer'])[0]
+        #set crs from user input
+        source_crs = input_polylines.crs()
+
+
+
+        layer = QgsVectorLayer(f"Point?crs={source_crs.authid()}", 'MyLayer', 'memory')
 
         # Add fields (columns) to the layer
         provider = layer.dataProvider()
@@ -143,7 +153,9 @@ class Piler:
             provider.addFeature(feature)
 
         # creating an variable for an input raster using a layer called EG_input, bring in you EG DTM as a tiff ard rename it as topo_input_raster in qgis
-        input_raster = QgsProject.instance().mapLayersByName("EG")[0]
+        input_raster = QgsProject.instance().mapLayersByName(self.inputs['terrain_layer'])[0]
+
+
 
         # sampling raster values (elevations) at the location of piles base
         sampled = processing.run(
@@ -260,6 +272,48 @@ class Piler:
         finaldf = self.calculate_cf(df_trackers)
 
         return finaldf
+
+    def load_results(self, df):
+
+        #possible improvement is to store crs globally
+
+        #setting a variable from gui inputs to pull crs from
+        input_polylines = QgsProject.instance().mapLayersByName(self.inputs['trackers_layer'])[0]
+        #set crs from user input
+        source_crs = input_polylines.crs()
+
+        #create empty results layer
+        resultsLayer = QgsVectorLayer(f"Point?crs={source_crs.authid()}", 'MyLayer', 'memory')
+
+        # Add fields (columns) to the layer
+        resultsProvider = resultsLayer.dataProvider()
+        resultsProvider.addAttributes([
+            QgsField('Tracker_ID', QVariant.Int),
+            QgsField('x', QVariant.Double),
+            QgsField('y', QVariant.Double),
+            QgsField('z terrain enter', QVariant.Double),
+            QgsField('slope', QVariant.Double),
+            QgsField('Tabletop_Elev', QVariant.Double),
+            QgsField('cf', QVariant.Double),
+            QgsField('pg', QVariant.Double),
+            QgsField('Pile_reveal', QVariant.Double),
+            QgsField('slope_label', QVariant.Double)
+        ])
+        resultsLayer.updateFields()
+
+        # Add features to the layer
+        for index, row in df.iterrows():
+            feature = QgsFeature()
+            feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(row['x'], row['y'])))
+            feature.setAttributes(
+                [row['Tracker_ID'], row['x'], row['y'], row['z terrain enter'], row['slope'], row['Tabletop_Elev'],
+                 row['cf'], row['pg'], row['Pile_reveal'], row['slope_label']])
+            resultsProvider.addFeature(feature)
+
+        QgsProject.instance().addMapLayer(resultsLayer).setName('results')
+        print(df.dtypes)
+
+        return df
 
 
 

@@ -224,4 +224,6 @@ class EarthCalc:
 			QgsProject.instance().addMapLayer(piles)
 			print('piles made')
 			df_again = piler.doCalc(piles)
+			dfresults = piler.load_results(df_again)
+
 			df_again.to_csv('~/earthcalcresults3.csv')
