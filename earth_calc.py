@@ -223,7 +223,13 @@ class EarthCalc:
 			piles = piler.doPiles(df)
 			QgsProject.instance().addMapLayer(piles)
 			print('piles made')
+			print(self.dialog.inputs['weight'])
 			df_again = piler.doCalc(piles)
 			dfresults = piler.load_results(df_again)
+			layer_name = "results"
+			# Call the function to apply the style
+			piler.apply_style_to_layer(layer_name)
 
-			df_again.to_csv('~/earthcalcresults3.csv')
+
+
+			# df_again.to_csv('~/earthcalcresults3.csv')

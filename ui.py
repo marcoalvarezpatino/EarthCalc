@@ -31,9 +31,11 @@ class TestDialog(QDialog):
 
 		# Spin boxes
 		self.minSpinBox = QDoubleSpinBox()
-		self.minSpinBox.setDecimals(1)
-		self.maxSpinBox = QDoubleSpinBox()		
-		self.maxSpinBox.setDecimals(1)
+		self.minSpinBox.setDecimals(2)
+		self.maxSpinBox = QDoubleSpinBox()
+		self.maxSpinBox.setDecimals(2)
+		self.weightSpinBox = QDoubleSpinBox()
+		self.weightSpinBox.setDecimals(2)
 		self.pilesSpinBox = QSpinBox()
 		self.pilesSpinBox.setValue(1)
 
@@ -62,6 +64,7 @@ class TestDialog(QDialog):
 		numPanel.addRow('Piles per Point',self.pilesSpinBox)
 		numPanel.addRow('Min Reveal',self.minSpinBox)
 		numPanel.addRow('Max Reveal',self.maxSpinBox)
+		numPanel.addRow('Weight', self.weightSpinBox)
 		
 		# combo box panel
 		layerPanel = QFormLayout()
@@ -123,6 +126,7 @@ class TestDialog(QDialog):
 			'num_piles': self.pilesSpinBox.value(),
 			'max_reveal': self.maxSpinBox.value(),
 			'min_reveal': self.minSpinBox.value(),
+			'weight': self.weightSpinBox.value(),
 		}
 		
 
@@ -133,7 +137,8 @@ class TestDialog(QDialog):
 		cond2 = self.inputs['max_reveal'] > self.inputs['min_reveal']
 		cond3 = len(self.inputs['terrain_layer']) > 0
 		cond4 = len(self.inputs['trackers_layer']) > 0
-		return cond1 & cond2 & cond3 & cond4
+		cond5 = self.inputs['weight'] > 0
+		return cond1 & cond2 & cond3 & cond4 & cond5
 
 	# message displayed if inputs are not valid
 	def invalidMessage(self):

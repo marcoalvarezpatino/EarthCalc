@@ -4,12 +4,13 @@ from qgis.core import *
 import processing
 import pandas as pd
 import numpy as np
+import os
+from qgis.PyQt.QtWidgets import QMessageBox
 
 
 class Piler:
     def __init__(self, inputs):
         self.inputs = inputs
-        # self.terrain = self.loadTerrain(inputs['terrain_layer'])
 
     def loadTrackers(self):
         # creating a polygon from a QGIS layer input called Tracker_Polylines
@@ -178,6 +179,64 @@ class Piler:
 
         return piles
 
+    def apply_style_to_layer(self, layer_name):
+        """
+        Apply a QGIS style file (.qml or .sld) from the plugin's folder to a vector layer.
+
+        :param layer_name: Name of the vector layer to apply the style to.
+        :param style_file_name: Name of the style file (with extension, e.g., 'style.qml') located in the plugin folder.
+        """
+        # Get the active QGIS project instance
+        project = QgsProject.instance()
+
+        style_file_name = "CF_Style_updated.qml"
+
+        # Find the layer by name
+        layer = next((l for l in project.mapLayers().values() if l.name() == layer_name), None)
+
+        if not layer:
+            QMessageBox.critical(None, "Error", f"Layer '{layer_name}' not found.")
+            return
+
+        if not isinstance(layer, QgsMapLayer):
+            QMessageBox.critical(None, "Error", f"'{layer_name}' is not a vector layer.")
+            return
+
+        # Get the plugin folder path
+        plugin_folder = os.path.dirname(os.path.abspath(__file__))
+
+        # Build the full path to the style file
+        style_file_path = os.path.join(plugin_folder, style_file_name)
+
+        if not os.path.exists(style_file_path):
+            QMessageBox.critical(None, "Error", f"Style file '{style_file_name}' not found in the plugin folder.")
+            return
+
+        # Apply the style to the layer
+        if style_file_name.endswith('.qml'):
+            if not layer.loadNamedStyle(style_file_path):
+                QMessageBox.critical(None, "Error", f"Failed to apply QML style '{style_file_name}'.")
+                return
+        elif style_file_name.endswith('.sld'):
+            if not layer.importSldStyle(style_file_path):
+                QMessageBox.critical(None, "Error", f"Failed to apply SLD style '{style_file_name}'.")
+                return
+        else:
+            QMessageBox.critical(None, "Error", "Unsupported style file format. Use .qml or .sld.")
+            return
+
+            # Refresh the layer and log success
+        layer.triggerRepaint()
+        QgsMessageLog.logMessage(
+            f"Style '{style_file_name}' applied to layer '{layer_name}'.",
+            "QGIS Plugin",
+            level=Qgis.Info
+        )
+        QMessageBox.information(None, "Success",
+                                f"Style '{style_file_name}' successfully applied to layer '{layer_name}'.")
+
+        return
+
     def linear_regress(self, df, verbose=False):
         """
         function to apply linear regression to each tracker in a data frame
@@ -210,6 +269,64 @@ class Piler:
         # update y_regression now that all slopes & intercepts have been determined
         df['y_regression'] = df['slope'] * df['y'] + df['intercept']
         print(df.head(6))
+
+        return df
+
+    def weighted_regress(self, df, verbose=False):
+        """
+        function to distribute weights for the regression on a gradient where end piles
+        receive the % designated by endpoint_weight & the rest of the weight
+        is distributed as a gradient amongst the middle piles
+
+        :param Pandas DataFrame df: df outputed from QGIS
+        :param str weighting_method: "gradient" or "static"
+        :param float endpoint_weight: between 0 - 1 (exclusive)
+        :param verbose: tells the program to print information about each regression
+
+        :return Pandas DataFrame df: df of inputted df with added columns for regression parameters
+
+        """
+
+        # get list of trackers to run through a loop
+
+
+        endpoint_weight = self.inputs['weight']
+        print(endpoint_weight)
+
+
+
+        tracker_list = df['Tracker_ID'].unique().tolist()
+        for i in range(len(tracker_list)):
+            tracker = tracker_list[i]
+
+            if verbose:
+                print(f'Regressing on tracker number {tracker}')
+
+            # inner piles is count of rows - 2 (first and last pile)
+            inner_pile_count = (df['Tracker_ID'] == tracker).sum() - 2
+
+            # get a weight vector by distributing inner weights based on user defined method
+            end_pile_weight = endpoint_weight / 2
+            inner_pile_weight = (1 - endpoint_weight) / inner_pile_count
+            weight_vec = [inner_pile_weight for _ in range(inner_pile_count)]
+
+
+            # add endpoints based on user input
+            weight_vec.insert(0, end_pile_weight)
+            weight_vec.append(end_pile_weight)
+
+            # x values are the northing (y) and regress on the z_terrain_enter
+            x = df.loc[df['Tracker_ID'] == tracker, 'y'].to_numpy()
+            y = df.loc[df['Tracker_ID'] == tracker, 'z terrain enter'].to_numpy()
+            coeffic = np.polyfit(x, y, 1, w=weight_vec)
+            # plot_outcome(x, y, coeffic)
+
+            # update df
+            df.loc[df['Tracker_ID'] == tracker, 'slope'] = coeffic[0]
+            df.loc[df['Tracker_ID'] == tracker, 'intercept'] = coeffic[1]
+
+        # update y_regression now that all slopes & intercepts have been determined
+        df['y_regression'] = df['slope'] * df['y'] + df['intercept']
 
         return df
 
@@ -268,7 +385,7 @@ class Piler:
         df['max_reveal'] = self.inputs['max_reveal']
         print(df.head(10))
 
-        df_trackers = self.linear_regress(df, verbose=False)
+        df_trackers = self.weighted_regress(df, verbose=False)
         finaldf = self.calculate_cf(df_trackers)
 
         return finaldf
@@ -297,7 +414,9 @@ class Piler:
             QgsField('cf', QVariant.Double),
             QgsField('pg', QVariant.Double),
             QgsField('Pile_reveal', QVariant.Double),
-            QgsField('slope_label', QVariant.Double)
+            QgsField('slope_label', QVariant.Double),
+            QgsField('min_reveal', QVariant.Double),
+            QgsField('max_reveal', QVariant.Double)
         ])
         resultsLayer.updateFields()
 
@@ -307,7 +426,7 @@ class Piler:
             feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(row['x'], row['y'])))
             feature.setAttributes(
                 [row['Tracker_ID'], row['x'], row['y'], row['z terrain enter'], row['slope'], row['Tabletop_Elev'],
-                 row['cf'], row['pg'], row['Pile_reveal'], row['slope_label']])
+                 row['cf'], row['pg'], row['Pile_reveal'], row['slope_label'], row['min_reveal'], row['max_reveal']])
             resultsProvider.addFeature(feature)
 
         QgsProject.instance().addMapLayer(resultsLayer).setName('results')
@@ -316,35 +435,5 @@ class Piler:
         return df
 
 
-
-    # def AddResults(self, piles):
-    #     # List all columns you want to include in the dataframe. I include all with:
-    #     cols = [f.name() for f in piles.fields()]
-    #
-    #     # A generator to yield one row at a time
-    #     datagen = ([f[col] for col in cols] for f in piles.getFeatures())
-    #
-    #     df = pd.DataFrame.from_records(data=datagen, columns=cols)
-    #     df['min_reveal'] = self.inputs['min_reveal']
-    #     df['max_reveal'] = self.inputs['max_reveal']
-    #
-    #     df_trackers = self.linear_regress(df, verbose=False)
-    #     df = self.calculate_cf(df_trackers)
-    #
-    #     # Creation of my QgsVectorLayer with no geometry
-    #     temp = QgsVectorLayer("none", "result", "memory")
-    #     temp_data = temp.dataProvider()
-    #     # Start of the edition
-    #     temp.startEditing()
-    #
-    #     # Creation of my fields
-    #     for head in df:
-    #         myField = QgsField(head, QVariant.Double)
-    #         temp.addAttribute(myField)
-    #     # Update
-    #     temp.updateFields()
-    #
-    #     print(df.head(6))
-    #     return df
 
 
