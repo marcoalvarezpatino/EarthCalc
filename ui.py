@@ -3,8 +3,6 @@
 import os
 import re
 
-from PyQt5.QtWidgets import QMessageBox
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import (
 	QVBoxLayout,
@@ -16,7 +14,8 @@ from qgis.PyQt.QtWidgets import (
 	QDoubleSpinBox,
 	QComboBox,
 	QDialogButtonBox,
-	QDialog
+	QDialog,
+	QMessageBox
 )
 
 class TestDialog(QDialog):
@@ -48,8 +47,8 @@ class TestDialog(QDialog):
 
 		# Standard buttons and button box
 		self.buttonBox = QDialogButtonBox()
-		self.buttonBox.addButton('Ok',QDialogButtonBox.AcceptRole)
-		self.buttonBox.addButton('Cancel',QDialogButtonBox.RejectRole)
+		self.buttonBox.addButton('Ok', QDialogButtonBox.ButtonRole.AcceptRole)
+		self.buttonBox.addButton('Cancel', QDialogButtonBox.ButtonRole.RejectRole)
 		self.buttonBox.accepted.connect(self.okAction)
 		self.buttonBox.rejected.connect(self.cancelAction)
 
@@ -143,7 +142,7 @@ class TestDialog(QDialog):
 	# message displayed if inputs are not valid
 	def invalidMessage(self):
 		msg = QMessageBox(text='One or more inputs is missing or invalid!')
-		msg.exec_()
+		msg.exec()
 
 	# action for Ok
 	def okAction(self):

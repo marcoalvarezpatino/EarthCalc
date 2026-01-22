@@ -205,7 +205,7 @@ class EarthCalc:
 		self.dialog.show()
 
 		# Run the dialog event loop
-		result = self.dialog.exec_()
+		result = self.dialog.exec()
 
 		# See if OK was pressed
 		if result:

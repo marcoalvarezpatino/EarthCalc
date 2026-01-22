@@ -9,6 +9,7 @@ description=This plugin calculates earthworks for PV trackers
 version=0.1
 author=Marco Alvarez-Patino
 email=malvarez-patino@revamp-eng.com
+supportsQt6=True
 
 about=This plugin calculates earthworks for PV trackers from shp files and elevation raster.
 
